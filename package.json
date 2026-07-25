@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@firebase/database": "^1.1.3",
+    "@libsql/client": "^0.17.4",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.0.1",
