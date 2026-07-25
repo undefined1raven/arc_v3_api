@@ -1,4 +1,4 @@
-import 'dotenv/config'; // 👈 MUST be the very first line!
+import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 
