@@ -42,8 +42,22 @@ export class DevicesService {
     return `This action returns a #${id} device`;
   }
 
-  update(id: string, updateDeviceDto: UpdateDeviceDto) {
-    return `This action updates a #${id} device`;
+  async update(id: string, updateDeviceDto: UpdateDeviceDto) {
+    const entries = Object.entries(updateDeviceDto).filter(
+      ([, value]) => value !== undefined,
+    );
+
+    if (entries.length === 0) {
+      return;
+    }
+
+    const updates = entries.map(([key]) => `${key} = ?`).join(', ');
+    const values = [...entries.map(([, value]) => value), id];
+
+    await this.turso.queryDB(
+      `UPDATE devices SET ${updates} WHERE device_id = ?`,
+      values,
+    );
   }
 
   remove(id: string) {

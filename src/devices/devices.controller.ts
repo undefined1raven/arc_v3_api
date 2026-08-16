@@ -30,7 +30,7 @@ export class DevicesController {
     return this.devicesService.findOne(id);
   }
 
-  @Patch(':id')
+  @Patch(':id/update')
   update(@Param('id') id: string, @Body() updateDeviceDto: UpdateDeviceDto) {
     return this.devicesService.update(id, updateDeviceDto);
   }
