@@ -3,4 +3,9 @@ type FirebaseStoredChallangeType = null | {
   created_at: number;
 };
 
-export type { FirebaseStoredChallangeType };
+type FirebaseStoredAuthTokenType = null | {
+  token: string;
+  created_at: number;
+};
+
+export type { FirebaseStoredChallangeType, FirebaseStoredAuthTokenType };

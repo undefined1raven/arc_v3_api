@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Post } from '@nestjs/common';
-import { AuthService } from './auth.service';
+import { AuthService } from './services/auth.service';
 import { sessionService } from './services/sessionService';
 import { createChallengeService } from './services/createChallengeService';
 import { FirebaseService } from 'src/firebase/firebase.service';
