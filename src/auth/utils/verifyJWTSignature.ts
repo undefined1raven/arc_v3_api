@@ -1,5 +1,6 @@
 import { JWK, jwtVerify } from 'jose';
 import { TursoDBService } from 'src/turso/turso.service';
+import { DPoPHeader, DPoPPayload } from '../types';
 
 async function verifyJWTSignature(
   turso: TursoDBService,
@@ -7,7 +8,11 @@ async function verifyJWTSignature(
   userId: string,
   deviceId: string,
 ): Promise<
-  | { status: 'success'; jwtPayload: object; jwtHeader: object }
+  | {
+      status: 'success';
+      jwtPayload: DPoPPayload;
+      jwtHeader: DPoPHeader;
+    }
   | { status: 'error'; error: string }
 > {
   const publicKeyResponse = await turso.queryDB(

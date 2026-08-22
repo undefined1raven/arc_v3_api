@@ -1,26 +1,12 @@
 import { FirebaseService } from 'src/firebase/firebase.service';
 import { jtiPath } from '../firebasePaths/jtiPath';
-import { JTI_VALIDITY_WINDOW_MS } from '../constants';
-
-type DPoPHeader = {
-  typ: 'dpop+jwt';
-  alg: 'ES256';
-  jwk: {
-    kty: 'EC';
-    crv: 'P-256';
-    x: string;
-    y: string;
-  };
-};
-
-type DPoPPayload = {
-  jti: string;
-  htm: string;
-  htu: string;
-  iat: number;
-  ath: string;
-  nonce?: string;
-};
+import {
+  DPOP_IAT_VALIDITY_WINDOW_S,
+  JTI_VALIDITY_WINDOW_MS,
+} from '../constants';
+import { cleanupExpiredJtis } from './outOfRotationJTICleanup';
+import { DPoPHeader, DPoPPayload } from '../types';
+import { hashAccessToken } from './hashAuthToken';
 
 async function verifyJWTClaims(
   firebase: FirebaseService,
@@ -28,6 +14,7 @@ async function verifyJWTClaims(
   jwtPayload: DPoPPayload,
   method: string,
   url: string,
+  authToken: string,
 ) {
   if (jwtHeader.typ !== 'dpop+jwt') {
     return false;
@@ -40,21 +27,27 @@ async function verifyJWTClaims(
     return false;
   }
 
-  let jtis: { jti: string; created_at: number }[] =
-    (await firebase.get(jtiPath)) ?? [];
+  const jtiResult = await firebase.transaction<{
+    expires_at: number;
+  }>(`${jtiPath}/${jwtPayload.jti}`, (current) => {
+    if (current !== null) {
+      return null; // Abort: JTI already exists
+    }
 
-  if (jtis.some((e) => e.jti === jwtPayload.jti) === true) {
+    return {
+      expires_at: Date.now() + JTI_VALIDITY_WINDOW_MS,
+    };
+  });
+
+  if (!jtiResult.committed) {
     return false;
   }
 
-  ///Filter expired jtis
-  jtis = jtis.filter((e) => Date.now() - e.created_at < JTI_VALIDITY_WINDOW_MS);
-
-  ///Push used jti to the array
-  jtis.push({ jti: jwtPayload.jti, created_at: Date.now() });
-
-  ///Save updated JTIs
-  await firebase.set(jtiPath, jtis);
+  if (Math.random() < 0.2) {
+    void cleanupExpiredJtis(firebase).catch((error) => {
+      console.error('Failed to clean up expired JTIs:', error);
+    });
+  }
 
   if (jwtPayload.htm !== method.toUpperCase()) {
     return false;
@@ -63,6 +56,24 @@ async function verifyJWTClaims(
   if (jwtPayload.htu !== url) {
     return false;
   }
+
+  const now_S = Math.floor(Date.now() / 1000);
+
+  if (now_S - jwtPayload.iat > DPOP_IAT_VALIDITY_WINDOW_S) {
+    return false;
+  }
+
+  if (typeof jwtPayload.ath !== 'string' || typeof authToken !== 'string') {
+    return false;
+  }
+
+  const hashedAuthToken = await hashAccessToken(authToken);
+
+  if (hashedAuthToken !== jwtPayload.ath) {
+    return;
+  }
+
+  return true;
 }
 
 export { verifyJWTClaims };

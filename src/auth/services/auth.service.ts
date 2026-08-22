@@ -3,6 +3,7 @@ import { FirebaseService } from '../../firebase/firebase.service';
 import { TursoDBService } from '../../turso/turso.service';
 import { verifyAuthToken } from '../utils/verifyAuthToken';
 import { verifyJWTSignature } from '../utils/verifyJWTSignature';
+import { verifyJWTClaims } from '../utils/verifyJWTClaims';
 @Injectable()
 export class AuthService {
   constructor(
@@ -45,6 +46,15 @@ export class AuthService {
 
     ///3. Verify JWT Claims
     const { jwtPayload, jwtHeader } = JWTSignatureVerificationResponse;
+
+    const JWTClaimsResponse = await verifyJWTClaims(
+      this.firebase,
+      jwtHeader,
+      jwtPayload,
+      method,
+      url,
+      authorization,
+    );
 
     return true;
   }

@@ -8,4 +8,29 @@ type FirebaseStoredAuthTokenType = null | {
   created_at: number;
 };
 
-export type { FirebaseStoredChallangeType, FirebaseStoredAuthTokenType };
+type DPoPHeader = {
+  typ: 'dpop+jwt';
+  alg: 'ES256';
+  jwk: {
+    kty: 'EC';
+    crv: 'P-256';
+    x: string;
+    y: string;
+  };
+};
+
+type DPoPPayload = {
+  jti: string;
+  htm: string;
+  htu: string;
+  iat: number;
+  ath: string;
+  nonce?: string;
+};
+
+export type {
+  FirebaseStoredChallangeType,
+  FirebaseStoredAuthTokenType,
+  DPoPHeader,
+  DPoPPayload,
+};

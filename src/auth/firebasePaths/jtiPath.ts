@@ -1,1 +1,1 @@
-export const jtiPath = `/auth/jti`;
+export const jtiPath = `/auth/jtis`;
