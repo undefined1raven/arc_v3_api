@@ -9,5 +9,6 @@ import { AuthGuard } from './guards/auth-guard';
   imports: [FirebaseModule, TursoDBModule],
   providers: [AuthService, AuthGuard],
   exports: [AuthService, AuthGuard],
+  controllers: [AuthController],
 })
 export class AuthModule {}

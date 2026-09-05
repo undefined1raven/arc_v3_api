@@ -28,7 +28,7 @@ export class FirebaseService {
   async transaction<T>(
     path: string,
     updateFn: (currentValue: T | null) => T | null,
-    options?: { applyLocally?: boolean },
+    options?,
   ) {
     return this.db.ref(path).transaction(updateFn, undefined, options);
   }

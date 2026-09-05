@@ -8,7 +8,7 @@ export class DevicesService {
   constructor(private readonly turso: TursoDBService) {}
 
   async create(createDeviceDto: CreateDeviceDto) {
-    await this.turso.queryDB(
+    return await this.turso.queryDB(
       `INSERT INTO devices (
       device_id,
       device_public_key,

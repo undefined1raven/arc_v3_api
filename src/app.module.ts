@@ -6,6 +6,7 @@ import { TursoDBModule } from './turso/turso.module';
 import { UsersModule } from './users/users.module';
 import { DevicesModule } from './devices/devices.module';
 import { AuthModule } from './auth/auth.module';
+import { SyncModule } from './sync/sync.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { AuthModule } from './auth/auth.module';
     UsersModule,
     DevicesModule,
     AuthModule,
+    SyncModule,
   ],
   controllers: [AppController],
   providers: [AppService],

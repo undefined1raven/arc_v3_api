@@ -40,7 +40,6 @@ class AuthGuard implements CanActivate {
 
     request.user = user;
 
-    throw new Error('GOT HERE');
     return true;
   }
 }
