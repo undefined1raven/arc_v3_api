@@ -68,5 +68,22 @@ class MutationDto {
 
   @IsNumber()
   updated_at!: number;
+
+  @IsNumber()
+  @IsOptional()
+  time_range_start?: number;
+
+  @IsNumber()
+  @IsOptional()
+  time_range_end?: number;
+
+  @IsString()
+  @IsOptional()
+  @Length(1, 70)
+  type?: string;
+
+  @IsString()
+  @Length(1, 10)
+  version!: string;
 }
 export { SyncPushDto, MutationDto };

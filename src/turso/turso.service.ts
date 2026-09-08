@@ -30,4 +30,8 @@ export class TursoDBService {
       throw err;
     }
   }
+  async newTransaction() {
+    const tx = await this.db.transaction('write');
+    return tx;
+  }
 }
