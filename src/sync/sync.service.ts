@@ -55,9 +55,21 @@ export class SyncService {
     });
 
     const commitResults = await Promise.all(commitPromises);
+    const allLastCursors = commitResults
+      .filter((r) => r.last_cursor !== null)
+      .map((r) => r.last_cursor);
 
-    console.log('commitResults:', commitResults);
+    //@ts-ignore
+    const lastCursor = Math.max(allLastCursors);
 
-    return { success: true, mutations: mutations };
+    const commitResultsWithoutCursor = commitResults.map((r) => {
+      delete r.last_cursor;
+      return r;
+    });
+
+    return {
+      commitResults: commitResultsWithoutCursor,
+      lastCursor,
+    };
   }
 }

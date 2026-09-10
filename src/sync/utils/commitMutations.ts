@@ -2,7 +2,22 @@ import { TursoDBService } from 'src/turso/turso.service';
 import { MutationDto, SyncPushDto } from '../dto/sync-push-dto';
 import { Feature } from '../sync.service';
 import { featureConfig } from './featureCommitHelper';
-import { InArgs } from '@libsql/client';
+import { InArgs, Transaction } from '@libsql/client';
+
+async function logCommitInSyncOpsTable(tx: Transaction, mutation: MutationDto) {
+  return await tx.execute({
+    sql: `INSERT INTO sync_ops (mutation_id, chunk_id, user_id, encrypted_content, tx, time_range_end, hash) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    args: [
+      mutation.mutation_id,
+      mutation.chunk_id,
+      mutation.account_id,
+      mutation.encrypted_content,
+      mutation.updated_at,
+      mutation.time_range_end ?? null,
+      mutation.hash,
+    ],
+  });
+}
 
 async function commitMutations(
   validMutationsWithInsert: {
@@ -12,22 +27,25 @@ async function commitMutations(
   turso: TursoDBService,
   userId: string,
   feature: Feature,
-) {
+): Promise<{
+  success: boolean;
+  commited: MutationDto[];
+  conflicts: MutationDto[];
+  last_cursor?: number | null;
+}> {
   const tx = await turso.newTransaction();
   const conflicts: SyncPushDto['mutations'] = [];
   const commits: SyncPushDto['mutations'] = [];
-
+  let last_cursor: null | number = null;
   const mutationHelper = featureConfig[feature];
+
   try {
     for (const mutationWithInsert of validMutationsWithInsert) {
       const mutation = mutationWithInsert.mutation;
       const insertNewChunk = mutationWithInsert.insert;
 
-      console.log('HASHES', mutation.base_hash, mutation.hash, insertNewChunk);
-
       if (insertNewChunk) {
-        ///If the base_hash is missing it means the chunk is new and should be inserted
-
+        ///Insert the new canonical chunk
         const result = await tx.execute({
           sql: `
           INSERT INTO ${feature}
@@ -39,14 +57,26 @@ async function commitMutations(
         `,
           args: mutationHelper.insertArgs(mutation, userId) as InArgs,
         });
-        console.log('RRW', result);
         if (result.rowsAffected === 1) {
+          ///Log the commit in the sync_ops table
+          const logCommitRes = await logCommitInSyncOpsTable(tx, mutation);
+          if (logCommitRes.rowsAffected !== 1) {
+            console.error(
+              'Failed to add mutation to commit log. Rolling back.',
+            );
+            throw new Error(
+              'Failed to add mutation to commit log. Rolling back. [X-1]',
+            );
+          }
+
           commits.push(mutation);
+          last_cursor = Number(logCommitRes.lastInsertRowid);
+          continue;
         } else {
           conflicts.push(mutation);
         }
       } else {
-        ///If the base_hash is present it means the chunk already exists and should be updated if the hash matches
+        ///Update the canonical chunk
         const result = await tx.execute({
           sql: `
           UPDATE ${feature}
@@ -65,10 +95,21 @@ async function commitMutations(
           ] as InArgs,
         });
 
-        console.log('LLW', result);
-
         if (result.rowsAffected === 1) {
+          ///Log the commit in the sync_ops table
+          const logCommitRes = await logCommitInSyncOpsTable(tx, mutation);
+
+          if (logCommitRes.rowsAffected !== 1) {
+            console.error(
+              'Failed to add mutation to commit log. Rolling back.',
+            );
+            throw new Error(
+              'Failed to add mutation to commit log. Rolling back. [X-2]',
+            );
+          }
+
           commits.push(mutation);
+          last_cursor = Number(logCommitRes.lastInsertRowid);
           continue;
         }
 
@@ -95,8 +136,9 @@ async function commitMutations(
 
     return {
       success: conflicts.length === 0,
-      committed: commits,
+      commited: commits,
       conflicts: conflicts,
+      last_cursor: last_cursor,
     };
   } catch (error) {
     await tx.rollback();
