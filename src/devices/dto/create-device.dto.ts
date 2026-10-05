@@ -1,4 +1,4 @@
-import { IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsNumber, IsObject, IsOptional, IsString } from 'class-validator';
 
 export class CreateDeviceDto {
   @IsString()
@@ -22,4 +22,7 @@ export class CreateDeviceDto {
   @IsOptional()
   @IsNumber()
   revoked_at?: number;
+
+  @IsString()
+  private_key_backup!: string;
 }

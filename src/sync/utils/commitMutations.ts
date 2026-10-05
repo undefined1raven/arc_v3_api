@@ -6,7 +6,7 @@ import { InArgs, Transaction } from '@libsql/client';
 
 async function logCommitInSyncOpsTable(tx: Transaction, mutation: MutationDto) {
   return await tx.execute({
-    sql: `INSERT INTO sync_ops (mutation_id, chunk_id, user_id, encrypted_content, tx, time_range_end, hash) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    sql: `INSERT OR IGNORE INTO sync_ops (mutation_id, chunk_id, user_id, encrypted_content, tx, time_range_end, hash) VALUES (?, ?, ?, ?, ?, ?, ?)`,
     args: [
       mutation.mutation_id,
       mutation.chunk_id,
@@ -60,20 +60,13 @@ async function commitMutations(
         if (result.rowsAffected === 1) {
           ///Log the commit in the sync_ops table
           const logCommitRes = await logCommitInSyncOpsTable(tx, mutation);
-          if (logCommitRes.rowsAffected !== 1) {
-            console.error(
-              'Failed to add mutation to commit log. Rolling back.',
-            );
-            throw new Error(
-              'Failed to add mutation to commit log. Rolling back. [X-1]',
-            );
-          }
 
           commits.push(mutation);
           last_cursor = Number(logCommitRes.lastInsertRowid);
           continue;
         } else {
           conflicts.push(mutation);
+          continue;
         }
       } else {
         ///Update the canonical chunk
@@ -98,15 +91,6 @@ async function commitMutations(
         if (result.rowsAffected === 1) {
           ///Log the commit in the sync_ops table
           const logCommitRes = await logCommitInSyncOpsTable(tx, mutation);
-
-          if (logCommitRes.rowsAffected !== 1) {
-            console.error(
-              'Failed to add mutation to commit log. Rolling back.',
-            );
-            throw new Error(
-              'Failed to add mutation to commit log. Rolling back. [X-2]',
-            );
-          }
 
           commits.push(mutation);
           last_cursor = Number(logCommitRes.lastInsertRowid);

@@ -1,4 +1,7 @@
 import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import { ValidateNested } from 'class-validator';
+import { CreateDeviceDto } from 'src/devices/dto/create-device.dto';
 
 export class CreateUserDto {
   @IsString()
@@ -11,17 +14,31 @@ export class CreateUserDto {
 
   @IsOptional()
   @IsString()
-  PIKBackup?: string | null;
+  PIKBackup?: string;
 
   @IsOptional()
   @IsString()
-  PSKBackup?: string | null;
+  PSKBackup?: string;
 
   @IsOptional()
   @IsString()
-  RCKBackup?: string | null;
+  RCKBackup?: string;
 
   @IsString()
   @IsNotEmpty()
   version!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  publicKey!: string;
+}
+
+export class CreateUserDeviceDto {
+  @ValidateNested()
+  @Type(() => CreateUserDto)
+  userPayload!: CreateUserDto;
+
+  @ValidateNested()
+  @Type(() => CreateDeviceDto)
+  devicePayload!: CreateDeviceDto;
 }

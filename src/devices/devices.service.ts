@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { CreateDeviceDto } from './dto/create-device.dto';
 import { UpdateDeviceDto } from './dto/update-device.dto';
 import { TursoDBService } from 'src/turso/turso.service';
+import { FindOneDeviceDto } from './dto/find-one-dto';
 
 @Injectable()
 export class DevicesService {
@@ -15,14 +16,17 @@ export class DevicesService {
       created_at,
       account_id,
       device_name,
-      last_seen
+      last_seen,
+      private_key_backup
     ) VALUES (?, ?, ?, ?, ?, ?)
     ON CONFLICT(device_id) DO UPDATE SET
       device_public_key = excluded.device_public_key,
       created_at = excluded.created_at,
       account_id = excluded.account_id,
       device_name = excluded.device_name,
-      last_seen = excluded.last_seen`,
+      last_seen = excluded.last_seen,
+      private_key_backup = excluded.private_key_backup`,
+
       [
         createDeviceDto.device_id,
         createDeviceDto.device_public_key,
@@ -30,6 +34,7 @@ export class DevicesService {
         createDeviceDto.account_id,
         createDeviceDto.device_name,
         createDeviceDto.last_seen,
+        createDeviceDto.private_key_backup,
       ],
     );
   }
@@ -38,8 +43,13 @@ export class DevicesService {
     return `This action returns all devices`;
   }
 
-  findOne(id: string) {
-    return `This action returns a #${id} device`;
+  async findOne(findOneDevice: FindOneDeviceDto) {
+    const matchingDevice = await this.turso.queryDB(
+      'SELECT * FROM devices WHERE device_id = ? AND account_id = ?',
+      [findOneDevice.device_id, findOneDevice.account_id],
+    );
+    console.error('matchingDevice', matchingDevice);
+    return matchingDevice;
   }
 
   async update(id: string, updateDeviceDto: UpdateDeviceDto) {

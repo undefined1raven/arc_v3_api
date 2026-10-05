@@ -27,7 +27,7 @@ async function createChallengeService(
   }
 
   if (accountId !== deviceObj?.account_id) {
-    throw new UnauthorizedException('Invalid device');
+    throw new UnauthorizedException(`Invalid device`);
   }
 
   if (typeof deviceObj?.device_id !== 'string') {

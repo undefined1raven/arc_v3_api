@@ -3,6 +3,8 @@ import { MutationDto, SyncPushDto } from './dto/sync-push-dto';
 import { TursoDBService } from 'src/turso/turso.service';
 import { validateMutationsForFeature } from './utils/getCanonicalHashForMutatedChunksInFeature';
 import { commitMutations } from './utils/commitMutations';
+import { getLastCursosrForAlreadyCommitedMutations } from './utils/getLastCursorForAlreadyCommitedMutations';
+import getLastCursorForUser from './utils/getLastCursorForUser';
 
 export type Feature =
   | 'timeTrackingChunks'
@@ -11,11 +13,17 @@ export type Feature =
   | 'personalDiaryChunks'
   | 'personalDiaryGroups';
 
+export type CommitResultsWithoutCursor = {
+  success: boolean;
+  commited: MutationDto[];
+  conflicts: MutationDto[];
+};
+
 @Injectable()
 export class SyncService {
   async pushMutations(
     turso: TursoDBService,
-    mutations: SyncPushDto,
+    syncPushObj: SyncPushDto,
   ): Promise<any> {
     const features = [
       'timeTrackingChunks',
@@ -25,16 +33,21 @@ export class SyncService {
       'personalDiaryGroups',
     ];
 
+    const forcePush = syncPushObj.forcePush;
+
     const validationResults = await Promise.all(
       features.map((feature) =>
         validateMutationsForFeature(
           feature as Feature,
-          mutations.userId,
+          syncPushObj.userId,
           turso,
-          mutations.mutations,
+          syncPushObj.mutations,
+          syncPushObj.forcePush,
         ),
       ),
     );
+
+    const alreadyCommitedMutations: CommitResultsWithoutCursor[] = [];
 
     const commitPromises = features.map((feature, index) => {
       const featureMutations = validationResults[index];
@@ -42,33 +55,47 @@ export class SyncService {
         insert: boolean;
         mutation: MutationDto;
       }[] = featureMutations
-        .filter((result) => result.valid)
+        .filter(
+          (result) =>
+            result.valid &&
+            (forcePush ? true : result.alreadyCommited === false),
+        )
         .map((result) => {
           return { mutation: result.mutation, insert: result.insert };
         });
+
+      const alreadyCommitedFeatureMutations = featureMutations.filter(
+        (m) => m.alreadyCommited === true,
+      );
+
+      alreadyCommitedMutations.push({
+        commited: alreadyCommitedFeatureMutations.map((m) => m.mutation),
+        success: true,
+        conflicts: [],
+      });
+
       return commitMutations(
         validMutationsWithInsert,
         turso,
-        mutations.userId,
+        syncPushObj.userId,
         feature as Feature,
       );
     });
 
     const commitResults = await Promise.all(commitPromises);
-    const allLastCursors = commitResults
-      .filter((r) => r.last_cursor !== null)
-      .map((r) => r.last_cursor);
-
-    //@ts-ignore
-    const lastCursor = Math.max(allLastCursors);
 
     const commitResultsWithoutCursor = commitResults.map((r) => {
       delete r.last_cursor;
       return r;
     });
 
+    const lastCursor = await getLastCursorForUser(syncPushObj.userId, turso);
+
     return {
-      commitResults: commitResultsWithoutCursor,
+      commitResults: [
+        ...commitResultsWithoutCursor,
+        ...alreadyCommitedMutations,
+      ],
       lastCursor,
     };
   }

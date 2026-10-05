@@ -10,6 +10,7 @@ import {
 import { DevicesService } from './devices.service';
 import { CreateDeviceDto } from './dto/create-device.dto';
 import { UpdateDeviceDto } from './dto/update-device.dto';
+import { FindOneDeviceDto } from './dto/find-one-dto';
 
 @Controller('devices')
 export class DevicesController {
@@ -25,9 +26,9 @@ export class DevicesController {
     return this.devicesService.findAll();
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.devicesService.findOne(id);
+  @Post('/findOne')
+  findOne(@Body() findOne: FindOneDeviceDto) {
+    return this.devicesService.findOne(findOne);
   }
 
   @Patch(':id/update')

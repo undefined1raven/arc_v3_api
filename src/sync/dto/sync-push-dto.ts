@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
   IsArray,
+  IsBoolean,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -24,6 +25,10 @@ class SyncPushDto {
   @IsNotEmpty()
   @Length(1, 100)
   deviceId!: string;
+
+  @IsBoolean()
+  @IsOptional()
+  forcePush!: boolean;
 }
 
 class MutationDto {

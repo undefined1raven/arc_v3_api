@@ -7,6 +7,7 @@ export async function validateMutationsForFeature(
   userId: string,
   turso: TursoDBService,
   mutations: SyncPushDto['mutations'],
+  forcePush: boolean = false,
 ) {
   const relevantMutations = mutations.filter(
     (mutation) => mutation.feature === feature,
@@ -38,16 +39,19 @@ export async function validateMutationsForFeature(
     if (canonicalHash === undefined) {
       return {
         mutation,
+        alreadyCommited: false,
         valid: true,
         insert: true, ///Tell the commit fn to INSERT the chunk
       };
     }
 
     const valid = canonicalHash === mutation.base_hash;
+    const alreadyCommited = canonicalHash === mutation.hash;
 
     return {
       mutation,
-      valid,
+      valid: forcePush === true ? true : valid,
+      alreadyCommited,
       insert: false,
     };
   });

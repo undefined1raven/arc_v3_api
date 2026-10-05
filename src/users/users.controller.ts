@@ -9,7 +9,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { CreateUserDto } from './dto/create-user.dto';
+import { CreateUserDeviceDto, CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateAccountDto } from '../users/dto/update-account.dto';
 import { AuthGuard } from 'src/auth/guards/auth-guard';
@@ -19,8 +19,8 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post('new')
-  create(@Body() createUserDto: CreateUserDto) {
-    return this.usersService.create(createUserDto);
+  create(@Body() createUserDeviceDto: CreateUserDeviceDto) {
+    return this.usersService.create(createUserDeviceDto);
   }
 
   @Get()
