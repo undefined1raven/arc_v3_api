@@ -3,10 +3,21 @@ import { CreateDeviceDto } from './dto/create-device.dto';
 import { UpdateDeviceDto } from './dto/update-device.dto';
 import { TursoDBService } from 'src/turso/turso.service';
 import { FindOneDeviceDto } from './dto/find-one-dto';
+import { RegistrationChallengeDto } from './dto/registration-challenge-dto';
+import { FirebaseService } from 'src/firebase/firebase.service';
+import { generateChallenge } from 'src/utils/generateAuthChallenge';
+import { stringToBase64Url } from 'src/utils/strToBase64url';
+import { DeviceRegistrationDto } from './dto/device-registration-dto copy';
+import { subtle } from 'crypto';
+import { base64UrlToArrayBuffer } from 'src/utils/base64UrlToArrayBuffer';
+import { sortObjectKeys } from 'src/utils/sortObjectKeys';
 
 @Injectable()
 export class DevicesService {
-  constructor(private readonly turso: TursoDBService) {}
+  constructor(
+    private readonly turso: TursoDBService,
+    private readonly firebase: FirebaseService,
+  ) {}
 
   async create(createDeviceDto: CreateDeviceDto) {
     return await this.turso.queryDB(
@@ -41,6 +52,108 @@ export class DevicesService {
 
   findAll() {
     return `This action returns all devices`;
+  }
+
+  async registrationChallenge(registrationChallenge: RegistrationChallengeDto) {
+    const challenge = generateChallenge();
+    const firebasePath = `device_registration_challenges/${stringToBase64Url(registrationChallenge.account_id)}/${stringToBase64Url(registrationChallenge.device_id)}`;
+    await this.firebase.set(firebasePath, {
+      challenge,
+      created_at: Date.now(),
+    });
+    return { challenge };
+  }
+
+  async registrationSubmit(registrationChallenge: DeviceRegistrationDto) {
+    const { account_id, device_id } =
+      registrationChallenge.signedPayload.deviceInfo;
+    const signature = registrationChallenge.signature;
+    const accountPublicKeyResponse = await this.turso.queryDB(
+      `SELECT publicKey FROM users WHERE id = ?`,
+      [account_id],
+    );
+
+    const publicKey = accountPublicKeyResponse[0]?.publicKey as string;
+
+    if (accountPublicKeyResponse.length === 0 || !publicKey) {
+      throw new Error('Account not found or public key missing');
+    }
+
+    const challengeObj: { challenge: string; created_at: number } =
+      await this.firebase.get(
+        `device_registration_challenges/${stringToBase64Url(account_id)}/${stringToBase64Url(device_id)}`,
+      );
+
+    if (!challengeObj || !challengeObj.challenge) {
+      throw new Error('Challenge not found or invalid');
+    }
+
+    if (
+      challengeObj.challenge !== registrationChallenge.signedPayload.challenge
+    ) {
+      throw new Error('Invalid challenge');
+    }
+
+    if (Date.now() - challengeObj.created_at > 2 * 60 * 1000) {
+      throw new Error('Invalid challenge');
+    }
+
+    const keyData = JSON.parse(publicKey);
+    const importedPublicKey = await subtle.importKey(
+      'jwk',
+      keyData,
+      {
+        name: 'ECDSA',
+        namedCurve: 'P-256',
+      },
+      true,
+      ['verify'],
+    );
+
+    const signatureValid = await subtle.verify(
+      {
+        name: 'ECDSA',
+        hash: { name: 'SHA-256' },
+      },
+      importedPublicKey,
+      base64UrlToArrayBuffer(signature),
+      new TextEncoder().encode(
+        JSON.stringify(sortObjectKeys(registrationChallenge.signedPayload)),
+      ),
+    );
+
+    if (!signatureValid) {
+      throw new Error('Invalid signature');
+    }
+
+    const deviceInfo = registrationChallenge.signedPayload.deviceInfo;
+
+    await this.turso.queryDB(
+      `INSERT INTO devices (
+        device_id,
+        device_public_key,
+        created_at,
+        account_id,
+        device_name,
+        last_seen,
+        private_key_backup
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        deviceInfo.device_id,
+        deviceInfo.device_public_key,
+        deviceInfo.created_at,
+        deviceInfo.account_id,
+        deviceInfo.device_name,
+        deviceInfo.last_seen,
+        deviceInfo.private_key_backup,
+      ],
+    );
+
+    await this.firebase.remove(
+      `device_registration_challenges/${stringToBase64Url(account_id)}/${stringToBase64Url(device_id)}`,
+    );
+
+    return { status: 'success' };
   }
 
   async findOne(findOneDevice: FindOneDeviceDto) {

@@ -11,6 +11,8 @@ import { DevicesService } from './devices.service';
 import { CreateDeviceDto } from './dto/create-device.dto';
 import { UpdateDeviceDto } from './dto/update-device.dto';
 import { FindOneDeviceDto } from './dto/find-one-dto';
+import { RegistrationChallengeDto } from './dto/registration-challenge-dto';
+import { DeviceRegistrationDto } from './dto/device-registration-dto copy';
 
 @Controller('devices')
 export class DevicesController {
@@ -21,10 +23,10 @@ export class DevicesController {
     return this.devicesService.create(createDeviceDto);
   }
 
-  @Get()
-  findAll() {
-    return this.devicesService.findAll();
-  }
+  // @Get()
+  // findAll() {
+  //   return this.devicesService.findAll();
+  // }
 
   @Post('/findOne')
   findOne(@Body() findOne: FindOneDeviceDto) {
@@ -36,8 +38,20 @@ export class DevicesController {
     return this.devicesService.update(id, updateDeviceDto);
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.devicesService.remove(id);
+  // @Delete(':id')
+  // remove(@Param('id') id: string) {
+  //   return this.devicesService.remove(id);
+  // }
+
+  @Post('/registration/challenge')
+  registrationChallenge(
+    @Body() registrationChallenge: RegistrationChallengeDto,
+  ) {
+    return this.devicesService.registrationChallenge(registrationChallenge);
+  }
+
+  @Post('/registration/submit')
+  registrationSubmit(@Body() registrationSubmit: DeviceRegistrationDto) {
+    return this.devicesService.registrationSubmit(registrationSubmit);
   }
 }

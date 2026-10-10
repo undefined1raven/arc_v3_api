@@ -6,7 +6,7 @@ import { InArgs, Transaction } from '@libsql/client';
 
 async function logCommitInSyncOpsTable(tx: Transaction, mutation: MutationDto) {
   return await tx.execute({
-    sql: `INSERT OR IGNORE INTO sync_ops (mutation_id, chunk_id, user_id, encrypted_content, tx, time_range_end, hash) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    sql: `INSERT OR IGNORE INTO sync_ops (mutation_id, chunk_id, user_id, encrypted_content, tx, time_range_end, hash, time_range_start, feature_config_type, feature_table, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       mutation.mutation_id,
       mutation.chunk_id,
@@ -15,6 +15,10 @@ async function logCommitInSyncOpsTable(tx: Transaction, mutation: MutationDto) {
       mutation.updated_at,
       mutation.time_range_end ?? null,
       mutation.hash,
+      mutation.time_range_start ?? null,
+      mutation.type ?? null,
+      mutation.feature,
+      mutation.version,
     ],
   });
 }

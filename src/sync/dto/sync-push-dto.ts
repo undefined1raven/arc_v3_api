@@ -31,6 +31,21 @@ class SyncPushDto {
   forcePush!: boolean;
 }
 
+class SyncPullDto {
+  @IsString()
+  @IsNotEmpty()
+  @Length(1, 100)
+  userId!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @Length(1, 100)
+  deviceId!: string;
+
+  @IsNumber()
+  lastCursor!: number;
+}
+
 class MutationDto {
   @IsString()
   @IsNotEmpty()
@@ -91,4 +106,4 @@ class MutationDto {
   @Length(1, 10)
   version!: string;
 }
-export { SyncPushDto, MutationDto };
+export { SyncPushDto, MutationDto, SyncPullDto };

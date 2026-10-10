@@ -7,7 +7,7 @@ import { json } from 'express';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.setGlobalPrefix('api');
-  app.use(json({ limit: '1mb' }));
+  app.use(json({ limit: '2.5mb' }));
 
   app.useGlobalPipes(
     new ValidationPipe({

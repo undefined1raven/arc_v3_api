@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { MutationDto, SyncPushDto } from './dto/sync-push-dto';
+import { MutationDto, SyncPullDto, SyncPushDto } from './dto/sync-push-dto';
 import { TursoDBService } from 'src/turso/turso.service';
 import { validateMutationsForFeature } from './utils/getCanonicalHashForMutatedChunksInFeature';
 import { commitMutations } from './utils/commitMutations';
@@ -21,10 +21,9 @@ export type CommitResultsWithoutCursor = {
 
 @Injectable()
 export class SyncService {
-  async pushMutations(
-    turso: TursoDBService,
-    syncPushObj: SyncPushDto,
-  ): Promise<any> {
+  constructor(private readonly tursoDB: TursoDBService) {}
+
+  async pushMutations(syncPushObj: SyncPushDto): Promise<any> {
     const features = [
       'timeTrackingChunks',
       'dayPlannerChunks',
@@ -40,7 +39,7 @@ export class SyncService {
         validateMutationsForFeature(
           feature as Feature,
           syncPushObj.userId,
-          turso,
+          this.tursoDB,
           syncPushObj.mutations,
           syncPushObj.forcePush,
         ),
@@ -76,7 +75,7 @@ export class SyncService {
 
       return commitMutations(
         validMutationsWithInsert,
-        turso,
+        this.tursoDB,
         syncPushObj.userId,
         feature as Feature,
       );
@@ -89,7 +88,10 @@ export class SyncService {
       return r;
     });
 
-    const lastCursor = await getLastCursorForUser(syncPushObj.userId, turso);
+    const lastCursor = await getLastCursorForUser(
+      syncPushObj.userId,
+      this.tursoDB,
+    );
 
     return {
       commitResults: [
@@ -98,5 +100,25 @@ export class SyncService {
       ],
       lastCursor,
     };
+  }
+
+  async pullMutations(pullBody: SyncPullDto) {
+    const mutationsToApply = await this.tursoDB.queryDB(
+      `SELECT * FROM sync_ops WHERE user_id = ? AND id > ?`,
+      [pullBody.userId, pullBody.lastCursor],
+    );
+    console.log('mutationsToApply', mutationsToApply);
+
+    const relevantMutations = mutationsToApply as unknown as MutationDto[];
+    const chunkMap: Record<string, MutationDto> = {};
+
+    relevantMutations.map((mutation: MutationDto) => {
+      const chunkId = mutation.chunk_id;
+      chunkMap[chunkId] = mutation;
+    });
+
+    console.log('chunkMap', chunkMap);
+
+    return chunkMap;
   }
 }
