@@ -3,8 +3,8 @@ import { MutationDto, SyncPullDto, SyncPushDto } from './dto/sync-push-dto';
 import { TursoDBService } from 'src/turso/turso.service';
 import { validateMutationsForFeature } from './utils/getCanonicalHashForMutatedChunksInFeature';
 import { commitMutations } from './utils/commitMutations';
-import { getLastCursosrForAlreadyCommitedMutations } from './utils/getLastCursorForAlreadyCommitedMutations';
 import getLastCursorForUser from './utils/getLastCursorForUser';
+import { MAX_MUTATIONS_PER_PULL } from './constants';
 
 export type Feature =
   | 'timeTrackingChunks'
@@ -103,11 +103,23 @@ export class SyncService {
   }
 
   async pullMutations(pullBody: SyncPullDto) {
-    const mutationsToApply = await this.tursoDB.queryDB(
-      `SELECT * FROM sync_ops WHERE user_id = ? AND id > ?`,
-      [pullBody.userId, pullBody.lastCursor],
+    const latestCursorRow = await this.tursoDB.queryDB(
+      `SELECT COALESCE(MAX(id), 0) AS last_cursor
+    FROM sync_ops
+    WHERE user_id = ?`,
+      [pullBody.userId],
     );
-    console.log('mutationsToApply', mutationsToApply);
+
+    const latestCursor = latestCursorRow[0]?.last_cursor;
+
+    if (typeof latestCursor !== 'number') {
+      throw new Error('Failed to get latest remote cursor');
+    }
+
+    const mutationsToApply = await this.tursoDB.queryDB(
+      `SELECT * FROM sync_ops WHERE user_id = ? AND id > ? LIMIT ?`,
+      [pullBody.userId, pullBody.lastCursor, MAX_MUTATIONS_PER_PULL],
+    );
 
     const relevantMutations = mutationsToApply as unknown as MutationDto[];
     const chunkMap: Record<string, MutationDto> = {};
@@ -117,8 +129,16 @@ export class SyncService {
       chunkMap[chunkId] = mutation;
     });
 
-    console.log('chunkMap', chunkMap);
+    const finalMutationsToApply: MutationDto[] = [];
 
-    return chunkMap;
+    for (const chunkId in chunkMap) {
+      const mutation = chunkMap[chunkId];
+      finalMutationsToApply.push(mutation);
+    }
+
+    return {
+      mutations: finalMutationsToApply,
+      maxRemoteCursor: latestCursor,
+    };
   }
 }

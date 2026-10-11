@@ -8,10 +8,7 @@ import { Row } from '@libsql/client';
 @Controller('sync')
 @UseGuards(AuthGuard)
 export class SyncController {
-  constructor(
-    private readonly syncService: SyncService,
-    private readonly turso: TursoDBService,
-  ) {}
+  constructor(private readonly syncService: SyncService) {}
 
   @Post('push')
   pushMutations(@Body() PushBody: SyncPushDto): Promise<void> {
@@ -19,9 +16,10 @@ export class SyncController {
   }
 
   @Post('pull')
-  pullMutations(
-    @Body() PullBody: SyncPullDto,
-  ): Promise<Record<string, MutationDto>> {
+  pullMutations(@Body() PullBody: SyncPullDto): Promise<{
+    maxRemoteCursor: number;
+    mutations: MutationDto[];
+  }> {
     return this.syncService.pullMutations(PullBody);
   }
 }
