@@ -4,39 +4,75 @@ import {
   NotFoundException,
   InternalServerErrorException,
 } from '@nestjs/common';
-import { CreateUserDto } from './dto/create-user.dto';
+import { CreateUserDeviceDto, CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateAccountDto } from './dto/update-account.dto';
 import { TursoDBService } from '../turso/turso.service';
 import userTableMap from './tableMap';
+import { InArgs } from '@libsql/client';
+import deviceTableMap from 'src/devices/tableMap';
 
 @Injectable()
 export class UsersService {
   constructor(private readonly turso: TursoDBService) {}
 
-  async create(createUserDto: CreateUserDto) {
-    const entries = Object.entries(createUserDto).filter(
-      ([, v]) => v !== undefined,
-    );
-    if (!entries.length) {
-      throw new BadRequestException('No user data provided.');
+  async create(createUserDeviceDto: CreateUserDeviceDto) {
+    const userDeviceDto = createUserDeviceDto.userPayload;
+    const deviceDto = createUserDeviceDto.devicePayload;
+
+    function procecssDto(dto, tableName: 'users' | 'devices') {
+      const entries = Object.entries(dto).filter(([, v]) => v !== undefined);
+      if (!entries.length) {
+        throw new BadRequestException(`Bad data provided. [${tableName}]`);
+      }
+
+      let cols = '';
+      if (tableName === 'devices') {
+        cols = entries.map(([k]) => deviceTableMap[k] ?? k).join(', ');
+      } else if (tableName === 'users') {
+        cols = entries.map(([k]) => userTableMap[k] ?? k).join(', ');
+      }
+
+      const placeholders = entries.map(() => '?').join(', ');
+      const args = entries.map(([, v]) => v);
+
+      const sql = `INSERT INTO ${tableName} (${cols}) VALUES (${placeholders}) RETURNING *`;
+
+      return { sql, args };
     }
 
-    const cols = entries.map(([k]) => userTableMap[k] ?? k).join(', ');
-    const placeholders = entries.map(() => '?').join(', ');
-    const args = entries.map(([, v]) => v);
+    const userDbConfig = procecssDto(userDeviceDto, 'users');
+    const deviceDbConfig = procecssDto(deviceDto, 'devices');
 
-    const sql = `INSERT INTO users (${cols}) VALUES (${placeholders}) RETURNING *`;
+    const tx = await this.turso.newTransaction();
 
     try {
-      const rows = await this.turso.queryDB(sql, args);
-      return { success: true, user: rows[0] };
+      await tx.execute({
+        sql: userDbConfig.sql,
+        args: userDbConfig.args as InArgs,
+      });
+
+      await tx.execute({
+        sql: deviceDbConfig.sql,
+        args: deviceDbConfig.args as InArgs,
+      });
+
+      await tx.commit();
     } catch (err) {
-      console.error('Failed to insert user:', {
-        sql,
+      try {
+        await tx.rollback();
+      } catch (rollbackErr) {
+        console.error('Rollback failed', {
+          args: '[REDACTED]',
+          error: rollbackErr,
+        });
+      }
+
+      console.error('Transaction failed', {
         args: '[REDACTED]',
         error: err,
       });
+
       throw new InternalServerErrorException('Failed to create user.');
     }
   }
