@@ -6,7 +6,7 @@ import { FindOneDeviceDto } from './dto/find-one-dto';
 import { RegistrationChallengeDto } from './dto/registration-challenge-dto';
 import { FirebaseService } from 'src/firebase/firebase.service';
 import { generateChallenge } from 'src/utils/generateAuthChallenge';
-import { stringToBase64Url } from 'src/utils/strToBase64url';
+import { stringToBase64Url } from '../../../src/utils/strToBase64url';
 import { DeviceRegistrationDto } from './dto/device-registration-dto copy';
 import { subtle } from 'crypto';
 import { base64UrlToArrayBuffer } from 'src/utils/base64UrlToArrayBuffer';
