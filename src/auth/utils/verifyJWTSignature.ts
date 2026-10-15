@@ -1,4 +1,3 @@
-import { JWK, jwtVerify } from 'jose';
 import { TursoDBService } from 'src/turso/turso.service';
 import { DPoPHeader, DPoPPayload } from '../types';
 
@@ -15,6 +14,7 @@ async function verifyJWTSignature(
     }
   | { status: 'error'; error: string }
 > {
+  const { jwtVerify } = await import('jose');
   const publicKeyResponse = await turso.queryDB(
     `SELECT device_public_key FROM devices WHERE account_id = ? AND device_id = ?`,
     [userId, deviceId],
@@ -26,7 +26,7 @@ async function verifyJWTSignature(
   }
   const publicKeyJwkStr = deviceDataRow?.device_public_key;
 
-  let publicKeyJwk: null | JWK = null;
+  let publicKeyJwk: any = null;
 
   try {
     publicKeyJwk = JSON.parse(publicKeyJwkStr);
