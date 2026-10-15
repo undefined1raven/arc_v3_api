@@ -24,6 +24,7 @@ export class SyncService {
   constructor(private readonly tursoDB: TursoDBService) {}
 
   async pushMutations(syncPushObj: SyncPushDto): Promise<any> {
+    console.log('STARTING PUSH FOR ACCOUNT: ', syncPushObj.deviceId);
     const features = [
       'timeTrackingChunks',
       'dayPlannerChunks',
@@ -93,6 +94,10 @@ export class SyncService {
       this.tursoDB,
     );
 
+    console.log(
+      `FINISHED PULL FOR ACCOUNT: ${syncPushObj.deviceId} | mutations: ${commitResultsWithoutCursor.length + alreadyCommitedMutations.length}`,
+    );
+
     return {
       commitResults: [
         ...commitResultsWithoutCursor,
@@ -103,6 +108,7 @@ export class SyncService {
   }
 
   async pullMutations(pullBody: SyncPullDto) {
+    console.log('STARTING PULL FOR ACCOUNT: ', pullBody.deviceId);
     const latestCursorRow = await this.tursoDB.queryDB(
       `SELECT COALESCE(MAX(id), 0) AS last_cursor
     FROM sync_ops
@@ -135,6 +141,10 @@ export class SyncService {
       const mutation = chunkMap[chunkId];
       finalMutationsToApply.push(mutation);
     }
+
+    console.log(
+      `FINISHED PULL FOR ACCOUNT: ${pullBody.deviceId} | mutations: ${finalMutationsToApply.length}`,
+    );
 
     return {
       mutations: finalMutationsToApply,
