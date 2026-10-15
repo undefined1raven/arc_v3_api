@@ -1,4 +1,4 @@
-import { generateChallenge } from 'src/utils/generateAuthChallenge';
+import { generateChallenge } from '../../utils/generateAuthChallenge';
 import { CreateChallengeDto } from '../dto/create-challenge-dto';
 import { FirebaseService } from 'src/firebase/firebase.service';
 import { TursoDBService } from 'src/turso/turso.service';

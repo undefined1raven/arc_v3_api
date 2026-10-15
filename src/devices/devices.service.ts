@@ -5,12 +5,12 @@ import { TursoDBService } from 'src/turso/turso.service';
 import { FindOneDeviceDto } from './dto/find-one-dto';
 import { RegistrationChallengeDto } from './dto/registration-challenge-dto';
 import { FirebaseService } from 'src/firebase/firebase.service';
-import { generateChallenge } from 'src/utils/generateAuthChallenge';
+import { generateChallenge } from '../utils/generateAuthChallenge';
 import { stringToBase64Url } from '../utils/strToBase64url';
 import { DeviceRegistrationDto } from './dto/device-registration-dto copy';
 import { subtle } from 'crypto';
-import { base64UrlToArrayBuffer } from 'src/utils/base64UrlToArrayBuffer';
-import { sortObjectKeys } from 'src/utils/sortObjectKeys';
+import { base64UrlToArrayBuffer } from '../utils/base64UrlToArrayBuffer';
+import { sortObjectKeys } from '../utils/sortObjectKeys';
 
 @Injectable()
 export class DevicesService {

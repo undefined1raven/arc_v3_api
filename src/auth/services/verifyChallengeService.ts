@@ -5,7 +5,7 @@ import { VerifyChallengeDto } from '../dto/verify-challenge-dto';
 import { FirebaseStoredChallangeType } from '../types';
 import { AUTH_CHALLENGE_EXPIRATION } from '../constants';
 import { verifyChallengeSignature } from '../utils/verifyChallengeSignature';
-import { generateAuthToken } from 'src/utils/generateAuthToken';
+import { generateAuthToken } from '../../utils/generateAuthToken';
 import { firebaseChallengePath } from '../firebasePaths/challengePath';
 import { authTokenPath } from '../firebasePaths/authTokenPath';
 
