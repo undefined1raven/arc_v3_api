@@ -8,10 +8,26 @@ import { CreateUserDeviceDto, CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateAccountDto } from './dto/update-account.dto';
 import { TursoDBService } from '../turso/turso.service';
-import userTableMap from './tableMap';
 import { InArgs } from '@libsql/client';
-import deviceTableMap from 'src/devices/tableMap';
 
+const deviceTableMap = {
+  device_id: 'device_id',
+  device_public_key: 'device_public_key',
+  created_at: 'created_at',
+  account_id: 'account_id',
+  device_name: 'device_name',
+  last_seen: 'last_seen',
+  private_key_backup: 'private_key_backup',
+};
+
+const userTableMap = {
+  id: 'id',
+  signupTime: 'signupTime',
+  PIKBackup: 'PIKBackup',
+  PSKBackup: 'PSKBackup',
+  RCKBackup: 'RCKBackup',
+  version: 'version',
+};
 @Injectable()
 export class UsersService {
   constructor(private readonly turso: TursoDBService) {}
